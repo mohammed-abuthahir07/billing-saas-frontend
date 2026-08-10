@@ -25,6 +25,7 @@
   box-shadow: var(--shadow-xl);
   position: relative;
   overflow: hidden;
+  animation: modalIn 0.32s var(--ease-out) both;
 }
 
 .auth-close {

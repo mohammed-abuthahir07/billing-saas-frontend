@@ -259,12 +259,10 @@
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.55);
   display: flex;
   justify-content: flex-end;
-  z-index: 2000;
+  z-index: 4000;
   opacity: 0;
   animation: overlayFadeIn 0.25s var(--ease-out) forwards;
 }
@@ -277,13 +275,12 @@
   background: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
   height: 100%;
-  /* padding: 40px 30px 32px; */
+  padding: 0;
   box-shadow: -20px 0 40px -10px rgba(15, 23, 42, 0.25);
   position: relative;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
@@ -294,27 +291,36 @@
   to { transform: translateX(0); }
 }
 
-.drawer-card::-webkit-scrollbar { width: 8px; }
+.drawer-card::-webkit-scrollbar { width: 6px; }
 .drawer-card::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 8px;
 }
-.drawer-card::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+.drawer-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 22px 16px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
 
 .drawer-close {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  background: transparent;
-  border: none;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
+  padding: 0;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s var(--ease-out), color 0.15s ease, transform 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .drawer-close:hover {
@@ -323,17 +329,15 @@
   transform: rotate(90deg);
 }
 
-.drawer-close:active { transform: rotate(90deg) scale(0.9); }
-
 .drawer-header {
-  margin-bottom: 28px;
-  margin-top: 15px;
-  opacity: 0;
-  animation: fadeUp 0.4s var(--ease-out) 0.08s forwards;
+  margin: 0;
+  opacity: 1;
+  animation: none;
+  min-width: 0;
 }
 
 .drawer-header h2 {
-  font-size: 22px;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
@@ -343,29 +347,93 @@
 .drawer-header p {
   color: var(--text-secondary);
   font-size: 13.5px;
+  line-height: 1.4;
 }
 
 .drawer-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
   flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+
+.drawer-form-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 22px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.drawer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.drawer-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.drawer-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.drawer-form .form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.drawer-form .req {
+  color: var(--danger);
+}
+
+.drawer-form .form-group input,
+.drawer-form .form-group select,
+.drawer-form .form-group textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fff;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.drawer-form .form-group input:focus,
+.drawer-form .form-group select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.drawer-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-color);
+  background: #fff;
+  padding: 14px 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .drawer-form > * {
-  opacity: 0;
-  animation: fadeUp 0.4s var(--ease-out) forwards;
-}
-.drawer-form > *:nth-child(1) { animation-delay: 0.08s; }
-.drawer-form > *:nth-child(2) { animation-delay: 0.12s; }
-.drawer-form > *:nth-child(3) { animation-delay: 0.16s; }
-.drawer-form > *:nth-child(4) { animation-delay: 0.20s; }
-.drawer-form > *:nth-child(5) { animation-delay: 0.24s; }
-.drawer-form > *:nth-child(n+6) { animation-delay: 0.26s; }
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  opacity: 1;
+  animation: none;
 }
 
 /* ---------- Inputs with icons ---------------------------------- */
@@ -724,13 +792,11 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 4000;
   padding: 24px;
   opacity: 0;
   animation: overlayFadeIn 0.2s var(--ease-out) forwards;
@@ -1738,32 +1804,38 @@ a:focus-visible {
 .drawer-overlay{
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.45);
+    background: rgba(15, 23, 42, 0.55);
     display: flex;
     justify-content: flex-end;
-    z-index: 9999;
+    z-index: 4000;
 }
 
 .drawer-card{
-    width: 950px;
+    width: min(560px, 100%);
     max-width: 100%;
     height: 100vh;
     background: #fff;
-    overflow-y: auto;
-    padding: 35px;
+    overflow: hidden;
+    padding: 0;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -16px 0 40px rgba(15, 23, 42, 0.18);
+    animation: drawerSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .drawer-form{
     display:flex;
     flex-direction:column;
-    gap:18px;
+    flex: 1;
+    min-height: 0;
+    gap:0;
 }
 
 .form-grid{
     display:grid;
     grid-template-columns:1fr 1fr;
-    gap:16px;
+    gap:14px;
 }
 /* ==========================================
    Product Section Container
@@ -1837,6 +1909,7 @@ a:focus-visible {
   align-items: center;
   gap: 12px;
   width: 100%;
+  flex-wrap: wrap;
 }
 
 .col-label {
@@ -1985,4 +2058,205 @@ a:focus-visible {
 .pdf-render-container .table-scroll-wrapper {
   width: 100% !important;
   overflow: visible !important;
+}
+
+/* =========================================================
+   UI polish layer (animations + responsiveness)
+   Does not alter invoice/PDF structure.
+   ========================================================= */
+.bills-container {
+  animation: pageEnter 0.4s var(--ease-out) both;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.bills-header {
+  flex-wrap: wrap;
+}
+
+.weight-unit-group {
+  display: flex;
+  gap: 6px;
+}
+
+.weight-unit-group input {
+  min-width: 0;
+  flex: 1;
+}
+
+.line-item-content {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.4fr) 70px minmax(0, 1fr) 90px 72px 36px;
+  gap: 8px;
+  align-items: start;
+  width: 100%;
+}
+
+.col-product,
+.col-qty,
+.col-weight,
+.col-price,
+.col-total,
+.col-action {
+  min-width: 0;
+}
+
+.col-total {
+  text-align: right;
+  padding-top: 22px;
+}
+
+.col-action {
+  padding-top: 22px;
+  display: flex;
+  justify-content: center;
+}
+
+.drawer-footer .breakdown-card {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+}
+
+.line-item-content select,
+.line-item-content input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  outline: none;
+}
+
+.line-item-content select:focus,
+.line-item-content input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.line-item-row {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+@media (max-width: 640px) {
+  .drawer-overlay {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 640px) {
+  .drawer-card {
+    max-width: 100%;
+  }
+
+  .drawer-topbar,
+  .drawer-form-scroll,
+  .drawer-footer {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .line-item-content {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .col-product {
+    grid-column: 1 / -1;
+  }
+
+  .col-total,
+  .col-action {
+    padding-top: 0;
+  }
+}
+
+.bills-card {
+  border-radius: 14px;
+  overflow: hidden;
+  animation: slideUp 0.35s var(--ease-out) both;
+}
+
+.bills-table tbody tr {
+  transition: background-color 0.18s ease;
+}
+
+.bills-table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.preview-action,
+.mark-paid-action {
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.preview-action:hover,
+.mark-paid-action:hover {
+  transform: scale(1.08);
+}
+
+.bill-drawer,
+.invoice-drawer,
+.drawer-panel,
+.drawer {
+  animation: drawerIn 0.35s var(--ease-out) both;
+}
+
+.receipt-modal,
+.preview-modal {
+  animation: modalIn 0.32s var(--ease-out) both;
+}
+
+.bills-toast {
+  animation: toastIn 0.35s var(--ease-out) both;
+}
+
+@media (max-width: 768px) {
+  .bills-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .create-bill-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .bills-table {
+    min-width: 640px;
+  }
+
+  .table-responsive,
+  .bills-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  .bills-header h1 {
+    font-size: 1.25rem;
+  }
+}
+
+/* Final overlay safety (portaled to body) */
+.drawer-overlay,
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 4000 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }

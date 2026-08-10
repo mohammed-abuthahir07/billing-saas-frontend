@@ -1,31 +1,43 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import Layout from "./components/Layout/Layout";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
-import Dashboard from "./pages/Dashboard/Dashboard";
-import Products from "./pages/Products/Products";
-import Bill from "./pages/Bills/Bill";
-import Login from "./pages/Login/Login";
-import Register from "./pages/Register/Register";
-import Profile from "./pages/Profile/Profile";
-import AuthModal from "./components/AuthModal/AuthModal";
-import AdminLogin from "./admin/pages/AdminLogin/AdminLogin";
 import AdminProtectedRoute from "./admin/routes/AdminProtectedRoute";
 import AdminLayout from "./admin/layouts/AdminLayout";
-import AdminDashboard from "./admin/pages/AdminDashboard/AdminDashboard";
-import Companies from "./admin/pages/Companies/Companies";
-import CompanyDetails from "./admin/pages/CompanyDetails/CompanyDetails";
-import Analytics from "./admin/pages/Analytics/Analytics";
-import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
-import VerifyOTP from "./pages/ForgotPassword/VerifyOTP";
-import ResetPassword from "./pages/ForgotPassword/ResetPassword";
 import PublicRoute from "./components/PublicRoute/PublicRoute";
 
+const AuthModal = lazy(() => import("./components/AuthModal/AuthModal"));
+const Dashboard = lazy(() => import("./pages/Dashboard/Dashboard"));
+const Products = lazy(() => import("./pages/Products/Products"));
+const Bill = lazy(() => import("./pages/Bills/Bill"));
+const Login = lazy(() => import("./pages/Login/Login"));
+const Register = lazy(() => import("./pages/Register/Register"));
+const Profile = lazy(() => import("./pages/Profile/Profile"));
+const AdminLogin = lazy(() => import("./admin/pages/AdminLogin/AdminLogin"));
+const AdminDashboard = lazy(() => import("./admin/pages/AdminDashboard/AdminDashboard"));
+const Companies = lazy(() => import("./admin/pages/Companies/Companies"));
+const CompanyDetails = lazy(() => import("./admin/pages/CompanyDetails/CompanyDetails"));
+const Analytics = lazy(() => import("./admin/pages/Analytics/Analytics"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword/ForgotPassword"));
+const VerifyOTP = lazy(() => import("./pages/ForgotPassword/VerifyOTP"));
+const ResetPassword = lazy(() => import("./pages/ForgotPassword/ResetPassword"));
 
+function RouteFallback() {
+  return (
+    <div className="app-route-fallback" role="status" aria-live="polite">
+      <div className="app-route-fallback-inner">
+        <div className="app-route-spinner" />
+        <span>Loading…</span>
+      </div>
+    </div>
+  );
+}
 
-  function App() {
-    return (
-      <>
-        <BrowserRouter>
+function App() {
+  return (
+    <>
+      <BrowserRouter>
+        <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Protected routes — require login */}
             <Route element={<ProtectedRoute />}>
@@ -38,20 +50,18 @@ import PublicRoute from "./components/PublicRoute/PublicRoute";
             </Route>
 
             {/* Admin */}
-            <Route path="/admin" element={
-                            <AdminProtectedRoute>
-                                <AdminLayout />
-                            </AdminProtectedRoute> }>
-                        <Route
-                            path="dashboard"
-                            element={<AdminDashboard />}
-                        />
-                        <Route 
-                              path="analytics" 
-                              element={<Analytics />} 
-                          />
-                         <Route path="companies" element={<Companies />}  />
-                        <Route path="companies/:id" element={<CompanyDetails />} />
+            <Route
+              path="/admin"
+              element={
+                <AdminProtectedRoute>
+                  <AdminLayout />
+                </AdminProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="companies" element={<Companies />} />
+              <Route path="companies/:id" element={<CompanyDetails />} />
             </Route>
 
             {/* Public pages */}
@@ -59,14 +69,17 @@ import PublicRoute from "./components/PublicRoute/PublicRoute";
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/forgot-password" element={<ForgotPassword/>}/>
-            <Route path="/verify-otp" element={<VerifyOTP/>} />
-            <Route path="/reset-password" element={<ResetPassword/>}/>
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp" element={<VerifyOTP />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
           </Routes>
-        </BrowserRouter>
+        </Suspense>
+      </BrowserRouter>
+      <Suspense fallback={null}>
         <AuthModal />
-        </>
-    );
-  }
+      </Suspense>
+    </>
+  );
+}
 
-  export default App;
+export default App;

@@ -1,18 +1,20 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useMemo } from "react";
 
 const AdminUIContext = createContext();
 
 export const AdminUIProvider = ({ children }) => {
-
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    const value = useMemo(
+        () => ({
+            isMobileMenuOpen,
+            setIsMobileMenuOpen
+        }),
+        [isMobileMenuOpen]
+    );
+
     return (
-        <AdminUIContext.Provider
-            value={{
-                isMobileMenuOpen,
-                setIsMobileMenuOpen
-            }}
-        >
+        <AdminUIContext.Provider value={value}>
             {children}
         </AdminUIContext.Provider>
     );

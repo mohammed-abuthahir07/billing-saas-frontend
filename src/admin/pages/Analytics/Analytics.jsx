@@ -50,31 +50,18 @@ const Analytics = () => {
 
 
     const fetchAnalytics = async () => {
-
-
         try {
-
-
-            const usersData = await getUsersAnalytics();
-
-            const revenueData = await getRevenueAnalytics();
-
-            const invoiceData = await getInvoiceAnalytics();
-
-            const productData = await getProductAnalytics();
-
-
+            const [usersData, revenueData, invoiceData, productData] = await Promise.all([
+                getUsersAnalytics(),
+                getRevenueAnalytics(),
+                getInvoiceAnalytics(),
+                getProductAnalytics()
+            ]);
 
             setUsers(usersData);
-
             setRevenue(revenueData);
-
             setInvoices(invoiceData);
-
             setProducts(productData);
-
-
-
         } catch(error) {
 
 

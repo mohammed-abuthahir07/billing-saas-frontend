@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useReactToPrint } from "react-to-print";
 import {
@@ -33,9 +32,9 @@ const Bill = () => {
   const [billsLoading, setBillsLoading] = useState(true);
   const [billsError, setBillsError] = useState('');
 
-  // Available products (from API) for the bill drawer
+  // Available products (from API) for the bill drawer — loaded on demand
   const [availableProducts, setAvailableProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(false);
 
   const [sellerGST, setSellerGST] = useState("");
 
@@ -75,23 +74,10 @@ const Bill = () => {
       const data = await getProducts();
       const list = Array.isArray(data) ? data : (data.products || []);
       setAvailableProducts(list);
-      
-      if (list.length > 0) {
-        setLineItems([
-          {
-            productName: list[0].item_name,
-            quantity: 1,
-            weight: "",
-            unit: "Kg",
-            sellingPrice: Number(list[0].price) || 0,
-            price: Number(list[0].price) || 0,
-            gst: Number(list[0].gst) || 0,
-            stock: Number(list[0].quantity) || 0
-          }
-        ]);
-      }
+      return list;
     } catch (err) {
       console.error('Failed to load products', err);
+      return [];
     } finally {
       setProductsLoading(false);
     }
@@ -118,12 +104,11 @@ const Bill = () => {
   }, []);
 
   useEffect(() => {
-    fetchProducts();
     fetchBills();
-  }, [fetchProducts, fetchBills]);
+  }, [fetchBills]);
 
   // ── Running totals calculation ─────────────────────────────────────
-  const calculateTotals = () => {
+  const totals = useMemo(() => {
     const subtotal = lineItems.reduce((sum, item) => {
       const unitPrice = Number(item.sellingPrice) || Number(item.price) || 0;
       return sum + unitPrice * (Number(item.quantity) || 0);
@@ -134,14 +119,8 @@ const Bill = () => {
       return sum + (unitPrice * (Number(item.quantity) || 0) * (Number(item.gst) || 0)) / 100;
     }, 0);
 
-    const grandTotal = subtotal + gst;
-    return { subtotal, gst, total: grandTotal };
-  };
-
-  // const totals = calculateTotals();
-  const totals = useMemo(() => {
-    return calculateTotals();
-}, [lineItems]);
+    return { subtotal, gst, total: subtotal + gst };
+  }, [lineItems]);
 
   // ── Line item helpers ──────────────────────────────────────────────────────
   const handleAddLineItem = () => {
@@ -198,14 +177,21 @@ const Bill = () => {
   };
 
   // ── Open drawer ────────────────────────────────────────────────────────────
-  const handleOpenCreateDrawer = () => {
+  const handleOpenCreateDrawer = async () => {
     setCustomerName('');
     setCustomerEmail('');
     setCustomerGST('');
     setCustomerAddress('');
     setStockError('');
-    if (availableProducts.length > 0) {
-      const first = availableProducts[0];
+    setIsDrawerOpen(true);
+
+    let products = availableProducts;
+    if (products.length === 0) {
+      products = (await fetchProducts()) || [];
+    }
+
+    if (products.length > 0) {
+      const first = products[0];
       setLineItems([
         {
           productName: first.item_name,
@@ -221,7 +207,6 @@ const Bill = () => {
     } else {
       setLineItems([{ productName: "", quantity: 1, weight: "", unit: "Kg", sellingPrice: 0, price: 0, gst: 0, stock: 0 }]);
     }
-    setIsDrawerOpen(true);
   };
 
   // ── Stock validation ───────────────────────────────────────────────────────
@@ -264,6 +249,12 @@ const Bill = () => {
   let pdfContainer = null;
 
   try {
+    // Load heavy PDF libs only when the user downloads
+    const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+      import("jspdf"),
+      import("html2canvas"),
+    ]);
+
     /*
      * A4 at 96 DPI ≈ 794 x 1123 px
      *
@@ -308,29 +299,20 @@ const Bill = () => {
     pdfContainer.appendChild(clonedInvoice);
     document.body.appendChild(pdfContainer);
 
-    /*
-     * Give browser a moment to calculate the fixed desktop layout.
-     */
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Allow layout to settle without a long artificial delay
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     const canvas = await html2canvas(clonedInvoice, {
-      scale: 2,
+      scale: 1.5,
       useCORS: true,
       allowTaint: true,
       backgroundColor: "#ffffff",
-
-      /*
-       * Important:
-       * Tell html2canvas to use a desktop-sized virtual viewport
-       * instead of the mobile viewport.
-       */
       windowWidth: 1200,
       windowHeight: 1600,
-
       logging: false
     });
 
-    const imgData = canvas.toDataURL("image/png", 1.0);
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
 
     const pdf = new jsPDF({
       orientation: "portrait",
@@ -360,7 +342,7 @@ const Bill = () => {
      */
     pdf.addImage(
       imgData,
-      "PNG",
+      "JPEG",
       margin,
       position,
       pdfWidth,
@@ -381,7 +363,7 @@ const Bill = () => {
 
       pdf.addImage(
         imgData,
-        "PNG",
+        "JPEG",
         margin,
         position,
         pdfWidth,
@@ -467,8 +449,8 @@ const Bill = () => {
       setSelectedInvoice(newInvoice);
       setIsPreviewOpen(true);
 
-      // Wait for state update & DOM render
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for preview DOM to paint before PDF capture
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
       await handleDownloadPDF(newInvoice);
 
@@ -573,7 +555,10 @@ const Bill = () => {
                 </tr>
               </thead>
               <tbody>
-                {invoices.length > 0 ? invoices.map((inv, idx) => (
+                {invoices.length > 0 ? invoices.map((inv, idx) => {
+                  const status = getBillStatus(inv);
+                  const statusKey = String(status).toLowerCase();
+                  return (
                   <tr key={inv.id || idx}>
                     <td>
                       <div className="recipient-meta">
@@ -586,11 +571,11 @@ const Bill = () => {
                       {fmt(inv.grand_total || inv.total_amount || inv.total)}
                     </td>
                     <td>
-                      <span className={`status-badge-table ${getBillStatus(inv).toLowerCase()}`}>
-                        {getBillStatus(inv) === 'paid' && <CheckCircle size={12} />}
-                        {getBillStatus(inv) === 'pending' && <Clock size={12} />}
-                        {getBillStatus(inv) === 'unpaid' && <AlertTriangle size={12} />}
-                        <span>{getBillStatus(inv)}</span>
+                      <span className={`status-badge-table ${statusKey}`}>
+                        {statusKey === 'paid' && <CheckCircle size={12} />}
+                        {statusKey === 'pending' && <Clock size={12} />}
+                        {statusKey === 'unpaid' && <AlertTriangle size={12} />}
+                        <span>{status}</span>
                       </span>
                     </td>
                     <td className="action-column">
@@ -605,7 +590,8 @@ const Bill = () => {
                       </div>
                     </td>
                   </tr>
-                )) : (
+                  );
+                }) : (
                   <tr>
                     <td colSpan="5" className="empty-table-cell">
                       <Receipt size={40} style={{ opacity: 0.3 }} />
@@ -619,273 +605,283 @@ const Bill = () => {
         )}
       </section>
 
-      {/* Invoice Creator Drawer */}
-      {isDrawerOpen && (
+      {/* Invoice Creator Drawer — portaled to body so layout transforms don't clip it */}
+      {isDrawerOpen && createPortal(
         <div className="drawer-overlay" onClick={() => setIsDrawerOpen(false)}>
-          <div className="drawer-card animate-slide-in-right" onClick={(e) => e.stopPropagation()}>
-            <button className="drawer-close" onClick={() => setIsDrawerOpen(false)}>
-              <X size={20} />
-            </button>
-            <div className="drawer-header">
-              <h2>New Invoice Form</h2>
-              <p>Fill in customer details and add products</p>
+          <div className="drawer-card" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-topbar">
+              <div className="drawer-header">
+                <h2>New Invoice</h2>
+                <p>Add client details and line items to generate a bill.</p>
+              </div>
+              <button className="drawer-close" onClick={() => setIsDrawerOpen(false)} type="button" aria-label="Close">
+                <X size={18} />
+              </button>
             </div>
 
             <form onSubmit={handleCreateInvoiceSubmit} className="drawer-form">
-              {stockError && (
-                <div className="stock-error-banner">
-                  <AlertTriangle size={18} />
-                  <span>{stockError}</span>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label>Seller GST</label>
-                <input
-                  value={sellerGST}
-                  onChange={(e) => setSellerGST(e.target.value)}
-                  placeholder="Seller GST"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Client Name *</label>
-                <div className="input-with-icon">
-                  <User size={16} className="field-icon" />
-                  <input
-                    type="text"
-                    placeholder="e.g. Acme Corp"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Client Email</label>
-                <input
-                  type="email"
-                  placeholder="e.g. invoices@acme.com"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Client GST</label>
-                  <input
-                    type="text"
-                    placeholder="GSTIN Number"
-                    value={customerGST}
-                    onChange={(e) => setCustomerGST(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Client Address</label>
-                  <input
-                    type="text"
-                    placeholder="Billing Address"
-                    value={customerAddress}
-                    onChange={(e) => setCustomerAddress(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Issued Date</label>
-                  <input
-                    type="date"
-                    value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Due Date</label>
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Line Items */}
-              <div className="line-items-section">
-                <div className="section-title">
-                  <h3>Products</h3>
-                  <button
-                    type="button"
-                    className="add-line-btn"
-                    onClick={handleAddLineItem}
-                    disabled={availableProducts.length === 0}
-                  >
-                    <Plus size={14} /> Add Item
-                  </button>
-                </div>
-
-                {productsLoading ? (
-                  <div className="products-loading-inline">
-                    <Loader2 size={18} className="spin-icon" /> Loading products...
+              <div className="drawer-form-scroll">
+                {stockError && (
+                  <div className="stock-error-banner">
+                    <AlertTriangle size={18} />
+                    <span>{stockError}</span>
                   </div>
-                ) : availableProducts.length === 0 ? (
-                  <div className="no-products-warning">
-                    <Package size={16} />
-                    <span>
-                      No products found. <a href="/products">Add products first.</a>
-                    </span>
+                )}
+
+                <section className="drawer-section">
+                  <h3 className="drawer-section-title">Seller &amp; Client</h3>
+
+                  <div className="form-group">
+                    <label htmlFor="seller-gst">Seller GST</label>
+                    <input
+                      id="seller-gst"
+                      value={sellerGST}
+                      onChange={(e) => setSellerGST(e.target.value)}
+                      placeholder="e.g. 22AAAAA0000A1Z5"
+                    />
                   </div>
-                ) : (
-                  <div className="line-items-scroll-wrapper">
-                    <div className="line-items-table">
-                      {lineItems.map((item, idx) => {
-                        const unitPrice = Number(item.sellingPrice) || Number(item.price) || 0;
-                        const total = unitPrice * Number(item.quantity || 0);
 
-                        return (
-                          <div className="line-item-row" key={idx}>
-                            {item.stock !== undefined && item.stock < item.quantity && (
-                              <div className="item-stock-warning">
-                                ⚠️ Only {item.stock} in stock
-                              </div>
-                            )}
-
-                            <div className="line-item-content">
-                              {/* 1. Product Select Dropdown */}
-                              <div className="col-product">
-                                <label className="col-label">Product</label>
-                                <select
-                                  value={item.productName}
-                                  onChange={(e) =>
-                                    handleItemChange(idx, "productName", e.target.value)
-                                  }
-                                >
-                                  {availableProducts.map((p) => (
-                                    <option key={p.id || p.item_name} value={p.item_name}>
-                                      {p.item_name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              {/* 2. Quantity Input & Stock Info */}
-                              <div className="col-qty">
-                                <label className="col-label">Qty</label>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  pattern="[0-9]*"
-                                  placeholder="Enter Qty"
-                                  value={item.quantity}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/[^0-9]/g, "");
-                                    handleItemChange(idx, "quantity", value);
-                                  }}
-                                  required
-                                />
-                                <div className="meta-text">Available: {item.stock}</div>
-                              </div>
-
-                              {/* 3. Weight & Unit */}
-                              <div className="col-weight">
-                                <label className="col-label">Weight &amp; Unit</label>
-                                <div className="weight-unit-group" style={{ display: 'flex', gap: '4px' }}>
-                                  <input
-                                    type="number"
-                                    placeholder="Weight"
-                                    value={item.weight}
-                                    onChange={(e) =>
-                                      handleItemChange(idx, "weight", e.target.value)
-                                    }
-                                  />
-              
-                                  <input
-                                    type="text"
-                                    placeholder="Kg / Packet / Bottle / Box"
-                                    value={item.unit}
-                                    onChange={(e) => handleItemChange(idx, "unit", e.target.value)}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* 4. Selling Price */}
-                              <div className="col-price">
-                                <label className="col-label">Selling Price</label>
-                                <input
-                                  type="number"
-                                  placeholder="Selling Price"
-                                  value={item.sellingPrice}
-                                  onChange={(e) =>
-                                    handleItemChange(idx, "sellingPrice", e.target.value)
-                                  }
-                                />
-                                <div className="meta-text">GST: {item.gst}%</div>
-                              </div>
-
-                              {/* 5. Total Amount */}
-                              <div className="col-total">
-                                <span className="col-label">Total</span>
-                                <strong>₹{total.toFixed(2)}</strong>
-                              </div>
-
-                              {/* 6. Remove Item Button */}
-                              <div className="col-action">
-                                <button
-                                  type="button"
-                                  className="remove-line-btn"
-                                  onClick={() => handleRemoveLineItem(idx)}
-                                  disabled={lineItems.length === 1}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  <div className="form-group">
+                    <label htmlFor="client-name">Client Name <span className="req">*</span></label>
+                    <div className="input-with-icon">
+                      <User size={16} className="field-icon" />
+                      <input
+                        id="client-name"
+                        type="text"
+                        placeholder="e.g. Acme Corp"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        required
+                      />
                     </div>
                   </div>
-                )}
+
+                  <div className="form-group">
+                    <label htmlFor="client-email">Client Email</label>
+                    <input
+                      id="client-email"
+                      type="email"
+                      placeholder="e.g. invoices@acme.com"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label htmlFor="client-gst">Client GST</label>
+                      <input
+                        id="client-gst"
+                        type="text"
+                        placeholder="GSTIN Number"
+                        value={customerGST}
+                        onChange={(e) => setCustomerGST(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="client-address">Client Address</label>
+                      <input
+                        id="client-address"
+                        type="text"
+                        placeholder="Billing address"
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label htmlFor="issued-date">Issued Date</label>
+                      <input
+                        id="issued-date"
+                        type="date"
+                        value={invoiceDate}
+                        onChange={(e) => setInvoiceDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="due-date">Due Date</label>
+                      <input
+                        id="due-date"
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="drawer-section line-items-section">
+                  <div className="section-title">
+                    <h3>Products</h3>
+                    <button
+                      type="button"
+                      className="add-line-btn"
+                      onClick={handleAddLineItem}
+                      disabled={availableProducts.length === 0}
+                    >
+                      <Plus size={14} /> Add Item
+                    </button>
+                  </div>
+
+                  {productsLoading ? (
+                    <div className="products-loading-inline">
+                      <Loader2 size={18} className="spin-icon" /> Loading products...
+                    </div>
+                  ) : availableProducts.length === 0 ? (
+                    <div className="no-products-warning">
+                      <Package size={16} />
+                      <span>
+                        No products found. <a href="/products">Add products first.</a>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="line-items-scroll-wrapper">
+                      <div className="line-items-table">
+                        {lineItems.map((item, idx) => {
+                          const unitPrice = Number(item.sellingPrice) || Number(item.price) || 0;
+                          const total = unitPrice * Number(item.quantity || 0);
+
+                          return (
+                            <div className="line-item-row" key={idx}>
+                              {item.stock !== undefined && item.stock < item.quantity && (
+                                <div className="item-stock-warning">
+                                  Only {item.stock} in stock
+                                </div>
+                              )}
+
+                              <div className="line-item-content">
+                                <div className="col-product">
+                                  <label className="col-label">Product</label>
+                                  <select
+                                    value={item.productName}
+                                    onChange={(e) =>
+                                      handleItemChange(idx, "productName", e.target.value)
+                                    }
+                                  >
+                                    {availableProducts.map((p) => (
+                                      <option key={p.id || p.item_name} value={p.item_name}>
+                                        {p.item_name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="col-qty">
+                                  <label className="col-label">Qty</label>
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    placeholder="Qty"
+                                    value={item.quantity}
+                                    onChange={(e) => {
+                                      const value = e.target.value.replace(/[^0-9]/g, "");
+                                      handleItemChange(idx, "quantity", value);
+                                    }}
+                                    required
+                                  />
+                                  <div className="meta-text">Avail: {item.stock}</div>
+                                </div>
+
+                                <div className="col-weight">
+                                  <label className="col-label">Weight / Unit</label>
+                                  <div className="weight-unit-group">
+                                    <input
+                                      type="number"
+                                      placeholder="Weight"
+                                      value={item.weight}
+                                      onChange={(e) =>
+                                        handleItemChange(idx, "weight", e.target.value)
+                                      }
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="Kg / Box"
+                                      value={item.unit}
+                                      onChange={(e) => handleItemChange(idx, "unit", e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="col-price">
+                                  <label className="col-label">Price</label>
+                                  <input
+                                    type="number"
+                                    placeholder="Price"
+                                    value={item.sellingPrice}
+                                    onChange={(e) =>
+                                      handleItemChange(idx, "sellingPrice", e.target.value)
+                                    }
+                                  />
+                                  <div className="meta-text">GST: {item.gst}%</div>
+                                </div>
+
+                                <div className="col-total">
+                                  <span className="col-label">Total</span>
+                                  <strong>₹{total.toFixed(2)}</strong>
+                                </div>
+
+                                <div className="col-action">
+                                  <button
+                                    type="button"
+                                    className="remove-line-btn"
+                                    onClick={() => handleRemoveLineItem(idx)}
+                                    disabled={lineItems.length === 1}
+                                    aria-label="Remove item"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </section>
               </div>
 
-              {/* Totals Summary */}
-              <div className="breakdown-card">
-                <div className="breakdown-row">
-                  <span>Subtotal:</span>
-                  <span>{fmt(totals.subtotal)}</span>
+              <div className="drawer-footer">
+                <div className="breakdown-card">
+                  <div className="breakdown-row">
+                    <span>Subtotal</span>
+                    <span>{fmt(totals.subtotal)}</span>
+                  </div>
+                  <div className="breakdown-row">
+                    <span>GST</span>
+                    <span>+{fmt(totals.gst)}</span>
+                  </div>
+                  <div className="breakdown-row final-total">
+                    <span>Grand Total</span>
+                    <span>{fmt(totals.total)}</span>
+                  </div>
                 </div>
-                <div className="breakdown-row">
-                  <span>GST:</span>
-                  <span>+{fmt(totals.gst)}</span>
-                </div>
-                <div className="breakdown-row final-total">
-                  <span>Grand Total:</span>
-                  <span>{fmt(totals.total)}</span>
-                </div>
-              </div>
 
-              <button
-                type="submit"
-                className="save-invoice-btn"
-                disabled={submitting || availableProducts.length === 0}
-              > 
-                {submitting ? (
-                  <><Loader2 size={16} className="spin-icon" /> Generating Bill...</>
-                ) : (
-                  <><Save size={16} /><span>Generate Bill</span></>
-                )}
-              </button>
+                <button
+                  type="submit"
+                  className="save-invoice-btn"
+                  disabled={submitting || availableProducts.length === 0}
+                >
+                  {submitting ? (
+                    <><Loader2 size={16} className="spin-icon" /> Generating Bill...</>
+                  ) : (
+                    <><Save size={16} /><span>Generate Bill</span></>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Invoice Preview Modal */}
-      {isPreviewOpen && selectedInvoice && (
+      {isPreviewOpen && selectedInvoice && createPortal(
         <div className="modal-overlay" onClick={() => setIsPreviewOpen(false)}>
           <div className="receipt-card animate-scale-up" onClick={(e) => e.stopPropagation()}>
             <div className="receipt-actions-top print-hide">
@@ -1004,7 +1000,8 @@ const Bill = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

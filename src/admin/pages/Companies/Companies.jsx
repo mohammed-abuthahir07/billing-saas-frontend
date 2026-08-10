@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
     Search,
     Building2,
@@ -11,36 +11,32 @@ import "./Companies.css";
 const Companies = () => {
     const navigate = useNavigate();
     const [companies, setCompanies] = useState([]);
-    const [filteredCompanies, setFilteredCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+
     const loadCompanies = async () => {
         try {
             setLoading(true);
             const data = await getCompanies();
-            setCompanies(data.companies);
-            setFilteredCompanies(data.companies);
+            setCompanies(data.companies || []);
         } catch (error) {
             console.log(error);
         } finally {
-
             setLoading(false);
         }
     };
+
     useEffect(() => {
         loadCompanies();
     }, []);
-    useEffect(() => {
-        const result = companies.filter((company) =>
-            company.name
-                .toLowerCase()
-                .includes(search.toLowerCase()) ||
 
-            company.email
-                .toLowerCase()
-                .includes(search.toLowerCase())
+    const filteredCompanies = useMemo(() => {
+        const q = search.toLowerCase().trim();
+        if (!q) return companies;
+        return companies.filter((company) =>
+            (company.name || "").toLowerCase().includes(q) ||
+            (company.email || "").toLowerCase().includes(q)
         );
-        setFilteredCompanies(result);
     }, [search, companies]);
 
     if (loading) {

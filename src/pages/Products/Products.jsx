@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Search,
   Filter,
@@ -17,7 +17,6 @@ import { getProducts, createProduct, updateProduct, deleteProduct } from '../../
 import './Products.css';
 
 const Products = () => {
-  const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -79,18 +78,19 @@ const Products = () => {
   }, [fetchProducts]);
 
   // ── Filter products client-side ────────────────────────────────────────────
-  const filteredProducts = products.filter(product => {
-    // Robust naming checks to prevent app crashes if fields are missing
-    const productName = product.itemName || product.name || product.item_name || '';
-    const productSku = product.sku || '';
-    
-    const matchesSearch =
-      productName.toLowerCase().includes(search.toLowerCase()) ||
-      productSku.toLowerCase().includes(search.toLowerCase());
-      
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const productName = product.itemName || product.name || product.item_name || '';
+      const productSku = product.sku || '';
+
+      const matchesSearch =
+        productName.toLowerCase().includes(search.toLowerCase()) ||
+        productSku.toLowerCase().includes(search.toLowerCase());
+
+      const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, search, selectedCategory]);
 
   // ── Open modals ────────────────────────────────────────────────────────────
   const handleOpenCreateModal = () => {
@@ -193,7 +193,7 @@ const Products = () => {
       <header className="products-header animate-slide-up">
         <div className="header-info">
           <h1>Products &amp; Services</h1>
-          <p>Manage your product catalogue — pricing, stock and categories stored in MySQL.</p>
+          <p>Manage your catalogue — pricing, stock, and categories in one place.</p>
         </div>
         <button className="add-product-btn" onClick={handleOpenCreateModal}>
           <Plus size={18} />
@@ -333,26 +333,27 @@ const Products = () => {
         )}
       </section>
 
-      {/* Create / Edit Modal */}
-      {isModalOpen && (
+      {/* Create / Edit Modal — portaled to body so layout transforms don't clip it */}
+      {isModalOpen && createPortal(
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal-card animate-scale-up" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setIsModalOpen(false)}>
-              <X size={20} />
+            <button className="modal-close" onClick={() => setIsModalOpen(false)} type="button" aria-label="Close">
+              <X size={18} />
             </button>
             <div className="modal-header">
               <h2>{modalMode === 'create' ? 'Add New Product' : 'Edit Product'}</h2>
               <p>
                 {modalMode === 'create'
-                  ? 'Product will be saved to the MySQL database.'
-                  : 'Changes will be updated in the database.'}
+                  ? 'Fill in the details below to create a new product.'
+                  : 'Update product details and save your changes.'}
               </p>
             </div>
 
             <form onSubmit={handleFormSubmit} className="modal-form">
               <div className="form-group">
-                <label>Product Name *</label>
+                <label htmlFor="product-name">Product Name <span className="req">*</span></label>
                 <input
+                  id="product-name"
                   type="text"
                   name="itemName"
                   placeholder="e.g. Premium Cotton Fabric"
@@ -364,8 +365,9 @@ const Products = () => {
 
               <div className="form-grid">
                 <div className="form-group">
-                  <label>Category</label>
+                  <label htmlFor="product-category">Category</label>
                   <select
+                    id="product-category"
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
@@ -375,7 +377,6 @@ const Products = () => {
 <option value="Electronics">Electronics</option>
 <option value="Services">Services</option>
 <option value="Consulting">Consulting</option>
-
 <option value="Masala & Spices">Masala & Spices</option>
 <option value="Groceries">Groceries</option>
 <option value="Beverages">Beverages</option>
@@ -383,34 +384,28 @@ const Products = () => {
 <option value="Dairy & Dairy Products">Dairy & Dairy Products</option>
 <option value="Organic & Health Food">Organic & Health Food</option>
 <option value="Packaged Foods">Packaged Foods</option>
-
 <option value="Kitchenware">Kitchenware</option>
 <option value="Home Appliances">Home Appliances</option>
 <option value="Furniture">Furniture</option>
 <option value="Home Decor">Home Decor</option>
 <option value="Cleaning & Housekeeping">Cleaning & Housekeeping</option>
 <option value="Bed & Bath">Bed & Bath</option>
-
 <option value="Apparel & Clothing">Apparel & Clothing</option>
 <option value="Footwear">Footwear</option>
 <option value="Fashion Accessories">Fashion Accessories</option>
 <option value="Jewelry & Watches">Jewelry & Watches</option>
 <option value="Beauty & Cosmetics">Beauty & Cosmetics</option>
 <option value="Personal Care & Hygiene">Personal Care & Hygiene</option>
-
 <option value="Sports Equipment">Sports Equipment</option>
 <option value="Fitness & Gym">Fitness & Gym</option>
 <option value="Outdoor & Camping">Outdoor & Camping</option>
 <option value="Toys & Games">Toys & Games</option>
-
 <option value="Medical & Healthcare">Medical & Healthcare</option>
 <option value="Pharmaceuticals">Pharmaceuticals</option>
 <option value="Supplements & Nutrition">Supplements & Nutrition</option>
-
 <option value="Stationery & Office Supplies">Stationery & Office Supplies</option>
 <option value="Books & Media">Books & Media</option>
 <option value="Educational Materials">Educational Materials</option>
-
 <option value="Industrial Equipment">Industrial Equipment</option>
 <option value="Tools & Hardware">Tools & Hardware</option>
 <option value="Electrical Supplies">Electrical Supplies</option>
@@ -418,23 +413,21 @@ const Products = () => {
 <option value="Safety & Security Gear">Safety & Security Gear</option>
 <option value="Raw Materials">Raw Materials</option>
 <option value="Packaging Materials">Packaging Materials</option>
-
 <option value="Automotive Parts">Automotive Parts</option>
 <option value="Vehicle Accessories">Vehicle Accessories</option>
-
 <option value="Pet Supplies">Pet Supplies</option>
 <option value="Gardening & Lawn Care">Gardening & Lawn Care</option>
 <option value="Handicrafts & Art">Handicrafts & Art</option>
 <option value="Gifts & Novelties">Gifts & Novelties</option>
 <option value="Baby Care & Products">Baby Care & Products</option>
 <option value="School Items">School Items</option>
-
 <option value="Other">Other</option>
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>SKU Code</label>
+                  <label htmlFor="product-sku">SKU Code</label>
                   <input
+                    id="product-sku"
                     type="text"
                     name="sku"
                     placeholder="e.g. FAB-COT-001"
@@ -444,33 +437,38 @@ const Products = () => {
                 </div>
               </div>
 
+              <div className="form-group">
+                <label htmlFor="product-description">Description</label>
+                <textarea
+                  id="product-description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Short product description"
+                  rows={3}
+                  required
+                />
+              </div>
+
               <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>Description</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="Enter product description"
-                    rows={3}
-                    required
-                  />
-                </div>
                 <div className="form-group">
-                  <label>GST (%)</label>
+                  <label htmlFor="product-gst">GST (%)</label>
                   <input
+                    id="product-gst"
                     type="number"
                     name="gst"
                     value={formData.gst}
                     onChange={handleChange}
-                    placeholder="Enter GST"
+                    placeholder="e.g. 18"
+                    min="0"
+                    step="0.01"
                     required
                   />
                 </div>
-                
                 <div className="form-group">
-                  <label>Stock Count *</label>
+                  <label htmlFor="product-qty">Stock Count <span className="req">*</span></label>
                   <input
+                    id="product-qty"
                     type="number"
                     name="quantity"
                     min="0"
@@ -482,16 +480,27 @@ const Products = () => {
                 </div>
               </div>
 
-              <button type="submit" className="modal-submit-btn" disabled={submitting}>
-                {submitting ? (
-                  <><Loader2 size={16} className="spin-icon" /> Saving...</>
-                ) : (
-                  modalMode === 'create' ? 'Create Product' : 'Save Changes'
-                )}
-              </button>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="modal-cancel-btn"
+                  onClick={() => setIsModalOpen(false)}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="modal-submit-btn" disabled={submitting}>
+                  {submitting ? (
+                    <><Loader2 size={16} className="spin-icon" /> Saving...</>
+                  ) : (
+                    modalMode === 'create' ? 'Create Product' : 'Save Changes'
+                  )}
+                </button>
+              </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

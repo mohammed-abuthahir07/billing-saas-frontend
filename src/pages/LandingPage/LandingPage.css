@@ -4,9 +4,6 @@
    Brand Primary: #2563eb
 ═══════════════════════════════════════════════════════ */
 
-/* ── Google Font ── */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
-
 /* ── CSS Variables ── */
 :root {
   --primary:        #2563eb;
@@ -29,34 +26,34 @@
   --radius-lg:      20px;
   --radius-xl:      28px;
   --transition:     0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --font:           "Inter", sans-serif;
+  --font:           "Outfit", system-ui, sans-serif;
 }
 
-/* ── Reset ── */
-*, *::before, *::after {
+/* ── Reset scoped to landing ── */
+.landing-page *,
+.landing-page *::before,
+.landing-page *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
-body {
+.landing-page {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text-body);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-a {
+.landing-page a {
   text-decoration: none;
   color: inherit;
 }
 
-button {
+.landing-page button {
   font-family: var(--font);
   cursor: pointer;
 }
@@ -342,6 +339,23 @@ button {
   margin-bottom: 24px;
   border: 1px solid #bfdbfe;
   animation: badgeShimmer 3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-badge,
+  .hero-glow,
+  .float-card,
+  .live-dot {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-badge,
+  .hero-glow,
+  .float-card {
+    animation: none;
+  }
 }
 
 .hero-left h1 {

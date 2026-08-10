@@ -1,7 +1,5 @@
-/* Google Font Import for clean modern typography */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-:root {
+/* Shared analytics tokens */
+.analytics-container {
     --bg-main: #f8fafc;
     --card-bg: #ffffff;
     --text-primary: #0f172a;
@@ -11,10 +9,7 @@
     --border-color: #e2e8f0;
     --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03);
     --shadow-md: 0 12px 25px -5px rgba(0, 0, 0, 0.08);
-}
-
-.analytics-container {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans, 'Outfit', system-ui, -apple-system, sans-serif);
     display: flex;
     flex-direction: column;
     gap: 25px;
@@ -26,6 +21,7 @@
     box-sizing: border-box;
     width: calc(100% - 260px);
     animation: analyticsFadeIn 0.5s ease-out;
+    overflow-x: hidden;
 }
 
 @keyframes analyticsFadeIn {

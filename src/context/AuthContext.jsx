@@ -1,29 +1,29 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext();
 
+const readStoredUser = () => {
+  try {
+    const savedUser = localStorage.getItem('billing_user');
+    const savedToken = localStorage.getItem('billing_token');
+    if (savedUser && savedToken) {
+      return JSON.parse(savedUser);
+    }
+  } catch (e) {
+    localStorage.removeItem('billing_user');
+    localStorage.removeItem('billing_token');
+  }
+  return null;
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(readStoredUser);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Check localStorage for persistent user sessions on load
-  useEffect(() => {
-    const savedUser = localStorage.getItem('billing_user');
-    const savedToken = localStorage.getItem('billing_token');
-    if (savedUser && savedToken) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        localStorage.removeItem('billing_user');
-        localStorage.removeItem('billing_token');
-      }
-    }
-  }, []);
-
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     try {
       const response = await api.post('/auth/login', { email, password });
       
@@ -48,18 +48,14 @@ export const AuthProvider = ({ children }) => {
       const message = error.response?.data?.message || error.response?.data?.error || 'Login failed. Please check your credentials.';
       return { success: false, error: message };
     }
-  };
+  }, []);
 
-  const register = async (name, email, password) => {
+  const register = useCallback(async (name, email, password) => {
     try {
       const response = await api.post('/auth/register', { name, email, password });
       
       const { token, user: userData } = response.data;
       
-      // const userObj = {
-      //   ...userData,
-      //   avatar: userData.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${name}&backgroundColor=2563eb`
-      // };
       const userObj = {
         ...userData,
         avatar: userData?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(userData?.name || 'User')}&backgroundColor=2563eb`
@@ -76,45 +72,58 @@ export const AuthProvider = ({ children }) => {
       const message = error.response?.data?.message || error.response?.data?.error || 'Registration failed. Please try again.';
       return { success: false, error: message };
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('billing_user');
     localStorage.removeItem('billing_token');
-  };
+  }, []);
 
-  const openLoginModal = () => {
+  const openLoginModal = useCallback(() => {
     setIsLoginModalOpen(true);
     setIsRegisterModalOpen(false);
-  };
+  }, []);
 
-  const openRegisterModal = () => {
+  const openRegisterModal = useCallback(() => {
     setIsRegisterModalOpen(true);
     setIsLoginModalOpen(false);
-  };
+  }, []);
 
-  const closeModals = () => {
+  const closeModals = useCallback(() => {
     setIsLoginModalOpen(false);
     setIsRegisterModalOpen(false);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    login,
+    register,
+    logout,
+    isLoginModalOpen,
+    setIsLoginModalOpen,
+    isRegisterModalOpen,
+    setIsRegisterModalOpen,
+    openLoginModal,
+    openRegisterModal,
+    closeModals,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen
+  }), [
+    user,
+    login,
+    register,
+    logout,
+    isLoginModalOpen,
+    isRegisterModalOpen,
+    openLoginModal,
+    openRegisterModal,
+    closeModals,
+    isMobileMenuOpen
+  ]);
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      login,
-      register,
-      logout,
-      isLoginModalOpen,
-      setIsLoginModalOpen,
-      isRegisterModalOpen,
-      setIsRegisterModalOpen,
-      openLoginModal,
-      openRegisterModal,
-      closeModals,
-      isMobileMenuOpen,
-      setIsMobileMenuOpen
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

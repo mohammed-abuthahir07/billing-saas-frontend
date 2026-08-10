@@ -1,23 +1,33 @@
-/* 1. Ensure root container strictly respects mobile viewport */
-.dashboard-container {
+/* Shared responsive helpers used across pages */
+
+.dashboard-container,
+.products-container,
+.bills-container,
+.profile-page-wrapper {
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
-  /* padding: 5px; Smaller padding for mobile screens */
+  min-width: 0;
 }
 
-/* 2. Responsive Layout Grids */
 .stats-grid {
   display: grid;
-  grid-template-columns: 1fr; /* Single column layout on mobile */
+  grid-template-columns: 1fr;
   gap: 12px;
   width: 100%;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
   }
 }
@@ -32,35 +42,32 @@
 @media (min-width: 1024px) {
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1.35fr 1fr;
   }
 }
 
-/* 3. Stat Cards Overflow Protection */
-.stat-card, 
+.stat-card,
 .dashboard-card {
   width: 100%;
   max-width: 100%;
-  min-width: 0; /* CRITICAL: Allows flex/grid children to shrink below content size */
+  min-width: 0;
   box-sizing: border-box;
 }
 
-/* 4. Scrollable Table Container Fix */
 .table-responsive {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
   display: block;
 }
 
 .recent-table {
   width: 100%;
-  min-width: 450px; /* Prevents columns from completely squishing while allowing container scrolling */
+  min-width: 420px;
   border-collapse: collapse;
 }
 
-/* 5. Header / Banner Fix for Mobile */
 .dashboard-header {
   display: flex;
   flex-direction: column;
@@ -81,13 +88,5 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap; /* Wraps date badge and button cleanly if needed */
+  flex-wrap: wrap;
 }
-
-
-
-/* preview bill */
-/* ==========================================
-   Modal Overlay & Outer Container
-   ========================================== */
-  

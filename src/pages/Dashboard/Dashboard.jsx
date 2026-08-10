@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getBills } from "../../services/billService";
 import {
   TrendingUp,
   TrendingDown,
@@ -14,34 +13,50 @@ import {
   CheckCircle,
   AlertTriangle,
   Clock,
-  Loader2,
   RefreshCw,
-  Package,
-  Star
+  Package
 } from 'lucide-react';
 import { getDashboard } from '../../services/dashboardService';
 import './Dashboard.css';
 
+const DashboardSkeleton = () => (
+  <div className="dashboard-skeleton animate-fade-in" aria-hidden="true">
+    <div className="skeleton-grid">
+      {[1, 2, 3, 4].map((item) => (
+        <div className="skeleton-card" key={item}>
+          <div className="skeleton skeleton-circle" />
+          <div className="skeleton skeleton-value" />
+          <div className="skeleton skeleton-line medium" />
+          <div className="skeleton skeleton-line short" />
+        </div>
+      ))}
+    </div>
+    <div className="dashboard-grid" style={{ opacity: 1 }}>
+      <div className="skeleton-card" style={{ minHeight: 260 }}>
+        <div className="skeleton skeleton-line medium" />
+        <div className="skeleton skeleton-line" />
+        <div className="skeleton skeleton-line" />
+        <div className="skeleton skeleton-line medium" />
+        <div className="skeleton skeleton-line short" />
+      </div>
+      <div className="skeleton-card" style={{ minHeight: 260 }}>
+        <div className="skeleton skeleton-line medium" />
+        <div className="skeleton skeleton-line" />
+        <div className="skeleton skeleton-line short" />
+        <div className="skeleton skeleton-line medium" />
+      </div>
+    </div>
+  </div>
+);
+
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [bills, setBills] = useState([]);
 
   const [dashData, setDashData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadBills();
-}, []);
-const loadBills = async () => {
-    try {
-        const res = await getBills();
-        setBills(res.bills || []);
-    } catch (err) {
-        console.log(err);
-    }
-};
   // ── Fetch dashboard stats ──────────────────────────────────────────────────
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
@@ -82,66 +97,79 @@ const loadBills = async () => {
     }
   };
 
-  // ── Build stat cards from API response ────────────────────────────────────
-  const buildStats = (dashboard) => [
-    {
-      title: 'Total Revenue',
-      value: fmt(dashboard.totalRevenue),
-      sub: `Monthly: ${fmt(dashboard.monthlySales)}`,
-      isPositive: parseFloat(dashboard.totalRevenue) >= 0,
-      icon: <DollarSign size={22} />,
-      color: 'blue'
-    },
-    {
-      title: 'Total Bills',
-      value: dashboard.totalBills ?? 0,
-      sub: `Today's Sales: ${fmt(dashboard.todaySales)}`,
-      isPositive: true,
-      icon: <FileText size={22} />,
-      color: 'emerald'
-    },
-    {
-      title: 'Yearly Revenue',
-      value: fmt(dashboard.yearlySales),
-      sub: `Monthly: ${fmt(dashboard.monthlySales)}`,
-      isPositive: parseFloat(dashboard.yearlySales) >= 0,
-      icon: <TrendingUp size={22} />,
-      color: 'amber'
-    },
-    {
-      title: 'Active Products',
-      value: dashboard.totalProducts ?? 0,
-      sub: `Total Stock: ${dashboard.totalStock ?? 0} units`,
-      isPositive: true,
-      icon: <ShoppingBag size={22} />,
-      color: 'indigo'
-    }
-  ];
-
   // ── Today's date ───────────────────────────────────────────────────────────
-  const todayLabel = new Date().toLocaleDateString('en-IN', {
-    year: 'numeric', month: 'long', day: 'numeric'
-  });
+  const todayLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+    []
+  );
 
+  const dashboardPayload = dashData?.dashboard || dashData;
 
- const topCustomers = Object.values(
-    bills.reduce((acc, bill) => {
-        const name = bill.customer_name;
+  const stats = useMemo(() => {
+    if (!dashboardPayload) return [];
+    return [
+      {
+        title: 'Total Revenue',
+        value: fmt(dashboardPayload.totalRevenue),
+        sub: `Monthly: ${fmt(dashboardPayload.monthlySales)}`,
+        isPositive: parseFloat(dashboardPayload.totalRevenue) >= 0,
+        icon: <DollarSign size={22} />,
+        color: 'blue'
+      },
+      {
+        title: 'Total Bills',
+        value: dashboardPayload.totalBills ?? 0,
+        sub: `Today's Sales: ${fmt(dashboardPayload.todaySales)}`,
+        isPositive: true,
+        icon: <FileText size={22} />,
+        color: 'emerald'
+      },
+      {
+        title: 'Yearly Revenue',
+        value: fmt(dashboardPayload.yearlySales),
+        sub: `Monthly: ${fmt(dashboardPayload.monthlySales)}`,
+        isPositive: parseFloat(dashboardPayload.yearlySales) >= 0,
+        icon: <TrendingUp size={22} />,
+        color: 'amber'
+      },
+      {
+        title: 'Active Products',
+        value: dashboardPayload.totalProducts ?? 0,
+        sub: `Total Stock: ${dashboardPayload.totalStock ?? 0} units`,
+        isPositive: true,
+        icon: <ShoppingBag size={22} />,
+        color: 'indigo'
+      }
+    ];
+  }, [dashboardPayload]);
 
+  // Derive top customers from dashboard recent bills (no extra API call)
+  const topCustomers = useMemo(() => {
+    const recent = dashData?.recentBills || [];
+    return Object.values(
+      recent.reduce((acc, bill) => {
+        const name = bill.customer_name || bill.customerName;
+        if (!name) return acc;
         if (!acc[name]) {
-            acc[name] = {
-                customer_name: name,
-                total_purchase: 0
-            };
+          acc[name] = {
+            customer_name: name,
+            total_purchase: 0,
+            total_orders: 0
+          };
         }
-
-        acc[name].total_purchase += Number(bill.grand_total);
-
+        acc[name].total_purchase += Number(bill.grand_total || bill.total || 0);
+        acc[name].total_orders += 1;
         return acc;
-    }, {})
-)
-.sort((a, b) => b.total_purchase - a.total_purchase)
-.slice(0, 3);
+      }, {})
+    )
+      .sort((a, b) => b.total_purchase - a.total_purchase)
+      .slice(0, 3);
+  }, [dashData]);
 
   return (
     <div className="dashboard-container">
@@ -171,16 +199,11 @@ const loadBills = async () => {
       </header>
 
       {/* Loading */}
-      {loading && (
-        <div className="dashboard-loading">
-          <Loader2 size={36} className="spin-icon" />
-          <p>Loading your dashboard data...</p>
-        </div>
-      )}
+      {loading && <DashboardSkeleton />}
 
       {/* Error */}
       {!loading && error && (
-        <div className="dashboard-error">
+        <div className="dashboard-error animate-scale-up">
           <AlertTriangle size={32} />
           <p>{error}</p>
           <button className="retry-btn" onClick={fetchDashboard}>
@@ -194,7 +217,7 @@ const loadBills = async () => {
         <>
           {/* Grid Stats */}
           <section className="stats-grid">
-            {buildStats(dashData.dashboard || dashData).map((stat, idx) => (
+            {stats.map((stat, idx) => (
               <div
                 key={stat.title}
                 className={`stat-card animate-scale-up delay-${idx + 1}`}
@@ -228,12 +251,11 @@ const loadBills = async () => {
                   <ArrowUpRight size={16} />
                 </button>
               </div>
-              <div className="table-responsive" style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="table-responsive">
                 {dashData.recentBills && dashData.recentBills.length > 0 ? (
                   <table className="recent-table">
                     <thead>
                       <tr>
-                        {/* <th>Bill #</th> */}
                         <th>Customer</th>
                         <th>Date</th>
                         <th>Amount</th>
@@ -243,9 +265,6 @@ const loadBills = async () => {
                     <tbody>
                       {dashData.recentBills.map((bill, idx) => (
                         <tr key={bill.id || idx}>
-                          {/* <td className="font-mono text-sm">
-                            {bill.bill_number || bill.id || `#${idx + 1}`}
-                          </td> */}
                           <td className="customer-cell">
                             {bill.customer_name || bill.customerName || 'N/A'}
                           </td>
@@ -285,9 +304,9 @@ const loadBills = async () => {
             <div className="dashboard-side-cards">
               {/* Low Stock Alert */}
               {dashData.lowStockProducts && dashData.lowStockProducts.length > 0 && (
-                <div className="dashboard-card low-stock-card">
+                <div className="dashboard-card low-stock-card animate-slide-up delay-4">
                   <div className="card-header">
-                    <h3>⚠️ Low Stock Alert</h3>
+                    <h3>Low Stock Alert</h3>
                   </div>
                   <ul className="low-stock-list">
                     {dashData.lowStockProducts.map((prod, idx) => (
@@ -301,44 +320,16 @@ const loadBills = async () => {
                 </div>
               )}
 
-              {/* Best Selling Products */}
-              {/* {dashData.bestSellingProducts && dashData.bestSellingProducts.length > 0 && (
-                <div className="dashboard-card best-sellers-card">
-                  <div className="card-header">
-                    <h3>Best Sellers</h3>
-                  </div>
-                  <ul className="best-sellers-list">
-                    {dashData.bestSellingProducts.map((prod, idx) => (
-                      <li key={prod.id || idx} className="best-seller-item">
-                        <span className="seller-rank">#{idx + 1}</span>
-
-                        <Star size={14} className="star-icon" />
-
-                        <span className="seller-name">
-                          {prod.product_name || prod.item_name || prod.name || "Unknown Product"}
-                        </span>
-
-                        <span className="seller-sales">
-                          {prod.total_sold || prod.sold || 0} sold
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )} */}
-
               {topCustomers.length > 0 && (
-                <div className="dashboard-card best-customers-card">
+                <div className="dashboard-card best-customers-card animate-slide-up delay-5">
                   <div className="card-header">
-                    <h3>🏆 Top Customers</h3>
+                    <h3>Top Customers</h3>
                   </div>
 
                   <ul className="best-sellers-list">
                     {topCustomers.map((customer, index) => (
-                      <li key={index} className="best-seller-item">
-                        <span className="seller-rank">
-                          {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
-                        </span>
+                      <li key={customer.customer_name || index} className="best-seller-item">
+                        <span className="seller-rank">#{index + 1}</span>
 
                         <span className="seller-name">
                           {customer.customer_name}
@@ -356,22 +347,19 @@ const loadBills = async () => {
                 </div>
               )}
 
-
-              {/* If no low-stock and no best sellers, show empty placeholder */}
-              
-                <div className="dashboard-card">
-                  <div className="card-header"><h3>Quick Stats</h3></div>
-                  <div className="quick-stats-grid">
-                    <div className="quick-stat">
-                      <span className="qs-label">Today's Sales</span>
-                      <span className="qs-val">{fmt(dashData.dashboard?.todaySales || dashData.todaySales)}</span>
-                    </div>
-                    <div className="quick-stat">
-                      <span className="qs-label">Monthly Sales</span>
-                      <span className="qs-val">{fmt(dashData.dashboard?.monthlySales || dashData.monthlySales)}</span>
-                    </div>
+              <div className="dashboard-card animate-slide-up delay-6">
+                <div className="card-header"><h3>Quick Stats</h3></div>
+                <div className="quick-stats-grid">
+                  <div className="quick-stat">
+                    <span className="qs-label">Today's Sales</span>
+                    <span className="qs-val">{fmt(dashData.dashboard?.todaySales || dashData.todaySales)}</span>
+                  </div>
+                  <div className="quick-stat">
+                    <span className="qs-label">Monthly Sales</span>
+                    <span className="qs-val">{fmt(dashData.dashboard?.monthlySales || dashData.monthlySales)}</span>
                   </div>
                 </div>
+              </div>
             </div>
           </div>
         </>
