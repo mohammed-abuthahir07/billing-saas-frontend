@@ -1,0 +1,35 @@
+.layout {
+  display: flex;
+}
+
+.main-content {
+  margin-top: 70px;
+  margin-left: 230px;
+  padding: 30px;
+  width: calc(100% - 230px);
+  min-height: calc(100vh - 70px);
+  background: var(--bg-primary);
+  transition: margin-left var(--transition-normal), width var(--transition-normal);
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  top: 70px;
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - 70px);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 998;
+  animation: fadeIn var(--transition-fast) forwards;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 20px 15px;
+  }
+}

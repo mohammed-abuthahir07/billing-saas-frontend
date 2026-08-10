@@ -1,0 +1,150 @@
+/* ==========================================
+   ADMIN NAVBAR STYLES
+   ========================================== */
+.admin-navbar {
+    height: 70px;
+    background: #111827;
+    color: #ffffff;
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 35px;
+    width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    animation: navbarSlideDown 0.4s ease-out;
+}
+
+@keyframes navbarSlideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.navbar-left h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Mobile Toggle Icon Button */
+.sidebar-toggle-btn {
+    display: none;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.sidebar-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+/* Profile Section */
+.admin-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 30px;
+    transition: background 0.25s ease;
+}
+
+.admin-profile:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-circle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.admin-profile:hover .profile-circle {
+    transform: scale(1.08) rotate(3deg);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+}
+
+.admin-profile h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.admin-profile p {
+    margin: 0;
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+/* Navbar Mobile Responsive */
+@media (max-width: 768px) {
+    .admin-navbar {
+        padding: 0 16px;
+        height: 65px;
+    }
+
+    .sidebar-toggle-btn {
+        display: flex;
+    }
+
+    .navbar-left h2 {
+        font-size: 18px;
+    }
+
+    .admin-profile p {
+        display: none; /* Hides email on small screens to save space */
+    }
+
+    .admin-profile h4 {
+        font-size: 13px;
+    }
+
+    .profile-circle {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+}
