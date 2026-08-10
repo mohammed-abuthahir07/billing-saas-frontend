@@ -1929,3 +1929,60 @@ a:focus-visible {
   font-weight: 500;
   margin-bottom: 4px;
 }
+/* =========================================================
+   PDF RENDERING
+   ========================================================= */
+
+.pdf-render-container {
+  width: 794px !important;
+  min-width: 794px !important;
+  max-width: 794px !important;
+  background: #ffffff !important;
+  box-sizing: border-box;
+}
+
+.pdf-render-container .receipt-printable-area {
+  width: 794px !important;
+  min-width: 794px !important;
+  max-width: 794px !important;
+  background: #ffffff !important;
+  box-sizing: border-box;
+}
+
+/*
+ * Prevent mobile responsive styles from making
+ * invoice columns collapse.
+ */
+
+.pdf-render-container .receipt-header {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+}
+
+.pdf-render-container .receipt-addresses-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+}
+
+.pdf-render-container .receipt-dates-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+}
+
+.pdf-render-container .receipt-items-table {
+  width: 100% !important;
+  min-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.pdf-render-container .receipt-items-table th,
+.pdf-render-container .receipt-items-table td {
+  white-space: normal !important;
+}
+
+.pdf-render-container .table-scroll-wrapper {
+  width: 100% !important;
+  overflow: visible !important;
+}

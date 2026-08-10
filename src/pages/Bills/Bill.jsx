@@ -257,45 +257,163 @@ const Bill = () => {
   });
 
   const handleDownloadPDF = async (inv) => {
-    const targetInvoice = inv || selectedInvoice;
-    if (!printRef.current) return;
+  const targetInvoice = inv || selectedInvoice;
 
-    try {
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#fff"
-      });
+  if (!printRef.current) return;
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
+  let pdfContainer = null;
 
-      const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
-      const pdfPageHeight = pdf.internal.pageSize.getHeight(); // 297mm
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+  try {
+    /*
+     * A4 at 96 DPI ≈ 794 x 1123 px
+     *
+     * We create a separate fixed-width PDF rendering area.
+     * This prevents the mobile responsive layout from affecting
+     * the generated PDF.
+     */
+    pdfContainer = document.createElement("div");
 
-      let heightLeft = imgHeight;
-      let position = 0;
+    pdfContainer.style.position = "absolute";
+    pdfContainer.style.left = "-10000px";
+    pdfContainer.style.top = "0";
+    pdfContainer.style.width = "794px";
+    pdfContainer.style.minWidth = "794px";
+    pdfContainer.style.maxWidth = "794px";
+    pdfContainer.style.background = "#ffffff";
+    pdfContainer.style.padding = "0";
+    pdfContainer.style.margin = "0";
+    pdfContainer.style.overflow = "visible";
+    pdfContainer.style.boxSizing = "border-box";
 
-      // First page
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfPageHeight;
+    // Clone invoice
+    const clonedInvoice = printRef.current.cloneNode(true);
 
-      // Loop through remaining content and auto-create pages
-      while (heightLeft > 0) {
-        position -= pdfPageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfPageHeight;
-      }
+    // Remove anything that should not appear in PDF
+    clonedInvoice
+      .querySelectorAll(".print-hide")
+      .forEach((el) => el.remove());
 
-      pdf.save(`Invoice-${targetInvoice?.invoice_number || targetInvoice?.bill_number || "Bill"}.pdf`);
-    } catch (err) {
-      console.error("PDF generation failed:", err);
-      showToast("Failed to generate PDF", "error");
+    /*
+     * Force invoice itself to A4 width.
+     */
+    clonedInvoice.style.width = "794px";
+    clonedInvoice.style.minWidth = "794px";
+    clonedInvoice.style.maxWidth = "794px";
+    clonedInvoice.style.margin = "0";
+    clonedInvoice.style.padding = "40px";
+    clonedInvoice.style.boxSizing = "border-box";
+    clonedInvoice.style.background = "#ffffff";
+    clonedInvoice.style.transform = "none";
+
+    pdfContainer.appendChild(clonedInvoice);
+    document.body.appendChild(pdfContainer);
+
+    /*
+     * Give browser a moment to calculate the fixed desktop layout.
+     */
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const canvas = await html2canvas(clonedInvoice, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+
+      /*
+       * Important:
+       * Tell html2canvas to use a desktop-sized virtual viewport
+       * instead of the mobile viewport.
+       */
+      windowWidth: 1200,
+      windowHeight: 1600,
+
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL("image/png", 1.0);
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    /*
+     * PDF margins
+     */
+    const margin = 8;
+
+    const pdfWidth = pageWidth - margin * 2;
+
+    const imgHeight =
+      (canvas.height * pdfWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = margin;
+
+    /*
+     * First page
+     */
+    pdf.addImage(
+      imgData,
+      "PNG",
+      margin,
+      position,
+      pdfWidth,
+      imgHeight,
+      undefined,
+      "FAST"
+    );
+
+    heightLeft -= pageHeight - margin * 2;
+
+    /*
+     * Additional pages
+     */
+    while (heightLeft > 0) {
+      position -= pageHeight - margin * 2;
+
+      pdf.addPage();
+
+      pdf.addImage(
+        imgData,
+        "PNG",
+        margin,
+        position,
+        pdfWidth,
+        imgHeight,
+        undefined,
+        "FAST"
+      );
+
+      heightLeft -= pageHeight - margin * 2;
     }
-  };
 
+    pdf.save(
+      `Invoice-${
+        targetInvoice?.invoice_number ||
+        targetInvoice?.bill_number ||
+        "Bill"
+      }.pdf`
+    );
+
+  } catch (err) {
+    console.error("PDF generation failed:", err);
+    showToast("Failed to generate PDF", "error");
+
+  } finally {
+    /*
+     * Always remove the temporary PDF container.
+     */
+    if (pdfContainer && document.body.contains(pdfContainer)) {
+      document.body.removeChild(pdfContainer);
+    }
+  }
+};
   // ── Submit bill payload ─────────────────────────────────────────────────────
   const handleCreateInvoiceSubmit = async (e) => {
     e.preventDefault();
