@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, CheckCircle2, ArrowRight,X} from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, CheckCircle2, ArrowRight, X } from 'lucide-react';
 import './Register.css';
 
 const Register = () => {
@@ -13,13 +13,14 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -41,12 +42,13 @@ const Register = () => {
       setError('Password must be at least 6 characters.');
       return;
     }
+
     setLoading(true);
     try {
       const result = await register(name, email, password);
       if (result.success) {
         setSuccess(true);
-        setTimeout(() => navigate('/'), 900);
+        setTimeout(() => navigate('/dashboard'), 900);
       } else {
         setError(result.error || 'Registration failed. Please try again.');
       }
@@ -65,13 +67,15 @@ const Register = () => {
       </div>
 
       <div className="login-card animate-scale-up">
-         <button
+        <button
           className="login-close-btn"
-          onClick={() => navigate("/")}
+          onClick={() => navigate('/')}
           type="button"
+          aria-label="Close"
         >
           <X size={22} />
         </button>
+
         {success ? (
           <div className="auth-success-screen animate-fade-in">
             <div className="success-icon-wrapper">
@@ -91,48 +95,55 @@ const Register = () => {
 
             <form onSubmit={handleSubmit} className="login-form">
               <div className="login-group">
-                <label>Full Name</label>
+                <label htmlFor="register-name">Full Name</label>
                 <div className="login-input-wrapper">
                   <User size={18} className="login-input-icon" />
                   <input
+                    id="register-name"
                     type="text"
                     placeholder="John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
+                    autoComplete="name"
                   />
                 </div>
               </div>
 
               <div className="login-group">
-                <label>Email Address</label>
+                <label htmlFor="register-email">Email Address</label>
                 <div className="login-input-wrapper">
                   <Mail size={18} className="login-input-icon" />
                   <input
+                    id="register-email"
                     type="email"
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    autoComplete="email"
                   />
                 </div>
               </div>
 
               <div className="login-group">
-                <label>Password</label>
+                <label htmlFor="register-password">Password</label>
                 <div className="login-input-wrapper">
                   <Lock size={18} className="login-input-icon" />
                   <input
+                    id="register-password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
                     className="login-password-toggle"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -140,31 +151,45 @@ const Register = () => {
               </div>
 
               <div className="login-group">
-                <label>Confirm Password</label>
+                <label htmlFor="register-confirm-password">Confirm Password</label>
                 <div className="login-input-wrapper">
                   <Lock size={18} className="login-input-icon" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    id="register-confirm-password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
+                    autoComplete="new-password"
                   />
+                  <button
+                    type="button"
+                    className="login-password-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 
               <button type="submit" className="login-submit-btn" disabled={loading}>
-                {loading ? <span className="spinner"></span> : (
+                {loading ? (
+                  <span className="spinner"></span>
+                ) : (
                   <>
                     <span>Get Started</span>
-                    <ArrowRight size={18} style={{ marginLeft: '4px' }} />
+                    <ArrowRight size={18} />
                   </>
                 )}
               </button>
             </form>
 
             <div className="login-footer">
-              <p>Already have an account? <Link to="/login">Sign in</Link></p>
+              <p>
+                Already have an account? <Link to="/login">Sign in</Link>
+              </p>
             </div>
           </>
         )}
